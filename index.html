@@ -32,6 +32,7 @@ button{
   border:none;
   border-radius:8px;
   font-weight:bold;
+  cursor:pointer;
 }
 button.editar{ background:#2563eb; }
 button.borrar{ background:#7f1d1d; }
@@ -154,8 +155,8 @@ function obtenerFechaHoy(){
   return `${d}/${m}/${y}`;
 }
 
-// FUNCION GUARDAR
-async function guardar(){
+// FUNCION GUARDAR (EXPOSICIÓN GLOBAL)
+window.guardar = async function guardar() {
   console.log("Guardar presionado");
 
   const fechaElem = document.getElementById("fecha");
@@ -217,7 +218,7 @@ async function guardar(){
   });
 
   verInicio();
-}
+};
 
 function cargarRecientes(){
   const recientes = document.getElementById("recientes");
@@ -324,6 +325,7 @@ verInicio();
 
 </body>
 </html>
+
 
 
 
