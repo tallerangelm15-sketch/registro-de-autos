@@ -106,9 +106,29 @@ input,textarea{
   <button onclick="verHistorial()">⬅ Regresar al historial</button>
 </div>
 
+<!-- Conexión con Supabase -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-let ordenes = JSON.parse(localStorage.getItem("ordenes") || "[]");
+const supabase = supabase.createClient(
+  https://zgqurqdngeousjyhqdqx.supabase.co
+  sb_publishable_DDJfU4vUSQerI-uKZrOKOA_qZLBs3B1);
+
+let ordenes = [];
 let editando = null;
+
+async function cargarOrdenes() {
+  const { data, error } = await supabase
+    .from("ordenes")
+    .select("*")
+    .order('id', { ascending: true });
+
+  if (!error) {
+    ordenes = data;
+    cargarRecientes();
+  } else {
+    alert("Error cargando órdenes: " + error.message);
+  }
+}
 
 function ocultar(){
   ["inicio","nueva","historial","perfil"].forEach(id=>{
@@ -155,7 +175,8 @@ function obtenerFechaHoy(){
   return `${d}/${m}/${y}`;
 }
 
-function guardar(){
+// Guardar orden en Supabase
+async function guardar(){
   let fechaInput = fecha.value || obtenerFechaHoy();
 
   let orden = {
@@ -171,20 +192,15 @@ function guardar(){
   };
 
   if(editando !== null){
-    ordenes[editando] = orden;
+    await supabase
+      .from("ordenes")
+      .update(orden)
+      .eq("id", ordenes[editando].id);
     editando = null;
-    localStorage.setItem("ordenes", JSON.stringify(ordenes));
-    verInicio();
   } else {
-    let existePlaca = ordenes.some(o => o.placa === orden.placa);
-    ordenes.push(orden);
-    localStorage.setItem("ordenes", JSON.stringify(ordenes));
-
-    if(existePlaca){
-      verPerfil(orden.placa);
-    } else {
-      verInicio();
-    }
+    await supabase
+      .from("ordenes")
+      .insert([orden]);
   }
 
   fecha.value = "";
@@ -196,11 +212,14 @@ function guardar(){
   falla.value = "";
   servicio.value = "";
   obs.value = "";
+
+  cargarOrdenes();
+  verInicio();
 }
 
 function cargarRecientes(){
   recientes.innerHTML="";
-  ordenes.slice(-5).reverse().forEach(o=>{
+  ordenes.slice(-5).reverse().forEach((o,i)=>{
     recientes.innerHTML+=`
       <div class="card">
         <b>${o.placa}</b> - ${o.cliente}<br>
@@ -280,24 +299,31 @@ function editar(i){
   verNueva();
 }
 
-function borrar(i){
+async function borrar(i){
   if(confirm("¿Borrar esta orden?")){
-    ordenes.splice(i,1);
-    localStorage.setItem("ordenes",JSON.stringify(ordenes));
-    verInicio();
+    await supabase
+      .from("ordenes")
+      .delete()
+      .eq("id", ordenes[i].id);
+    cargarOrdenes();
   }
 }
 
-function borrarVehiculo(placa){
+async function borrarVehiculo(placa){
   if(confirm("¿Borrar todo el historial de este vehículo?")){
-    ordenes=ordenes.filter(o=>o.placa!==placa);
-    localStorage.setItem("ordenes",JSON.stringify(ordenes));
+    await supabase
+      .from("ordenes")
+      .delete()
+      .eq("placa", placa);
+    cargarOrdenes();
     verInicio();
   }
 }
 
+cargarOrdenes();
 verInicio();
 </script>
 
 </body>
 </html>
+
