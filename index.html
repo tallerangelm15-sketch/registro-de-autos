@@ -106,39 +106,101 @@ input,textarea{
   <button onclick="verHistorial()">⬅ Regresar al historial</button>
 </div>
 
-<!-- Cargar Supabase -->
+<!-- Supabase -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/supabase.min.js"></script>
 
 <script>
-// Inicializar Supabase
-const supabaseClient = supabase.createClient(
-  "https://zgqurqdngeousjyhqdqx.supabase.co",
-  "sb_publishable_DDJfU4vUSQerI-uKZrOKOA_qZLBs3B1"
-);
+  // Inicializar Supabase
+  const supabase = supabase.createClient(
+    "https://zgqurqdngeousjyhqdqx.supabase.co",
+    "sb_publishable_DDJfU4vUSQerI-uKZrOKOA_qZLBs3B1"
+  );
 
-// Variables
-let ordenes = JSON.parse(localStorage.getItem("ordenes") || "[]");
-let editando = null;
+  let ordenes = JSON.parse(localStorage.getItem("ordenes") || "[]");
+  let editando = null;
 
-// Funciones
-function ocultar(){
-  ["inicio","nueva","historial","perfil"].forEach(id=>{
-    document.getElementById(id).style.display="none";
-  });
-}
+  function ocultar(){
+    ["inicio","nueva","historial","perfil"].forEach(id=>{
+      document.getElementById(id).style.display="none";
+    });
+  }
 
-function verInicio(){
-  ocultar();
-  inicio.style.display="block";
-  cargarRecientes();
-}
+  function verInicio(){
+    ocultar();
+    inicio.style.display="block";
+    cargarRecientes();
+  }
 
-function verNueva(){
-  ocultar();
-  nueva.style.display="block";
-  tituloOrden.innerText = editando !== null ? "Editar orden" : "Nueva orden";
+  function verNueva(){
+    ocultar();
+    nueva.style.display="block";
+    tituloOrden.innerText = editando !== null ? "Editar orden" : "Nueva orden";
 
-  if(editando === null){
+    if(editando === null){
+      fecha.value = "";
+      cliente.value = "";
+      telefono.value = "";
+      placa.value = "";
+      modelo.value = "";
+      km.value = "";
+      falla.value = "";
+      servicio.value = "";
+      obs.value = "";
+    }
+  }
+
+  function verHistorial(){
+    ocultar();
+    historial.style.display="block";
+    cargarHistorial();
+  }
+
+  function obtenerFechaHoy(){
+    let f = new Date();
+    let d = String(f.getDate()).padStart(2,"0");
+    let m = String(f.getMonth()+1).padStart(2,"0");
+    let y = f.getFullYear();
+    return `${d}/${m}/${y}`;
+  }
+
+  // GUARDAR en localStorage y Supabase
+  async function guardar(){
+    let fechaInput = fecha.value || obtenerFechaHoy();
+
+    let orden = {
+      fecha: fechaInput,
+      cliente: cliente.value,
+      telefono: telefono.value,
+      placa: placa.value.toUpperCase(),
+      modelo: modelo.value,
+      km: km.value,
+      falla: falla.value,
+      servicio: servicio.value,
+      obs: obs.value
+    };
+
+    if(editando !== null){
+      ordenes[editando] = orden;
+      editando = null;
+    } else {
+      ordenes.push(orden);
+    }
+
+    // Guardar en localStorage
+    localStorage.setItem("ordenes", JSON.stringify(ordenes));
+
+    // Guardar en Supabase
+    try {
+      const { data, error } = await supabase
+        .from('ordenes')  // nombre de la tabla en Supabase
+        .insert([orden]);
+      if(error) console.error("Error Supabase:", error);
+      else console.log("Guardado en Supabase:", data);
+    } catch(e){
+      console.error("Error de conexión con Supabase:", e);
+    }
+
+    // Limpiar inputs
     fecha.value = "";
     cliente.value = "";
     telefono.value = "";
@@ -148,180 +210,110 @@ function verNueva(){
     falla.value = "";
     servicio.value = "";
     obs.value = "";
-  }
-}
 
-function verHistorial(){
-  ocultar();
-  historial.style.display="block";
-  cargarHistorial();
-}
-
-function obtenerFechaHoy(){
-  let f = new Date();
-  let d = String(f.getDate()).padStart(2,"0");
-  let m = String(f.getMonth()+1).padStart(2,"0");
-  let y = f.getFullYear();
-  return `${d}/${m}/${y}`;
-}
-
-// Guardar orden en localStorage y Supabase
-async function guardar(){
-  let fechaInput = fecha.value || obtenerFechaHoy();
-
-  let orden = {
-    fecha: fechaInput,
-    cliente: cliente.value,
-    telefono: telefono.value,
-    placa: placa.value.toUpperCase(),
-    modelo: modelo.value,
-    km: km.value,
-    falla: falla.value,
-    servicio: servicio.value,
-    obs: obs.value
-  };
-
-  if(editando !== null){
-    ordenes[editando] = orden;
-    editando = null;
-  } else {
-    ordenes.push(orden);
-  }
-
-  // Guardar en localStorage
-  localStorage.setItem("ordenes", JSON.stringify(ordenes));
-
-  // Guardar en Supabase
-  try {
-    const { data, error } = await supabaseClient
-      .from('ordenes') // Asegúrate de que esta tabla exista en Supabase
-      .insert([orden]);
-    if(error) console.error("Error guardando en Supabase:", error);
-  } catch(e) {
-    console.error("Error guardando en Supabase:", e);
-  }
-
-  // Limpiar inputs
-  fecha.value = "";
-  cliente.value = "";
-  telefono.value = "";
-  placa.value = "";
-  modelo.value = "";
-  km.value = "";
-  falla.value = "";
-  servicio.value = "";
-  obs.value = "";
-
-  // Mostrar vista correcta
-  let existePlaca = ordenes.some(o => o.placa === orden.placa);
-  if(existePlaca){
-    verPerfil(orden.placa);
-  } else {
     verInicio();
   }
-}
 
-function cargarRecientes(){
-  recientes.innerHTML="";
-  ordenes.slice(-5).reverse().forEach(o=>{
-    recientes.innerHTML+=`
-      <div class="card">
-        <b>${o.placa}</b> - ${o.cliente}<br>
-        ${o.fecha}
-        <button onclick="verPerfil('${o.placa}')">Ver</button>
-      </div>`;
-  });
-}
+  function cargarRecientes(){
+    recientes.innerHTML="";
+    ordenes.slice(-5).reverse().forEach(o=>{
+      recientes.innerHTML+=`
+        <div class="card">
+          <b>${o.placa}</b> - ${o.cliente}<br>
+          ${o.fecha}
+          <button onclick="verPerfil('${o.placa}')">Ver</button>
+        </div>`;
+    });
+  }
 
-function cargarHistorial(){
-  listaHistorial.innerHTML="";
+  function cargarHistorial(){
+    listaHistorial.innerHTML="";
+    let filtroPlaca = buscarPlaca.value.toUpperCase();
+    let filtroCliente = buscarCliente.value.toLowerCase();
+    let filtroModelo = buscarModelo.value.toLowerCase();
+    let placasFiltradas = [];
 
-  let filtroPlaca = buscarPlaca.value.toUpperCase();
-  let filtroCliente = buscarCliente.value.toLowerCase();
-  let filtroModelo = buscarModelo.value.toLowerCase();
+    ordenes.forEach(o=>{
+      if(o.placa.includes(filtroPlaca) &&
+         o.cliente.toLowerCase().includes(filtroCliente) &&
+         o.modelo.toLowerCase().includes(filtroModelo)){
+        if(!placasFiltradas.includes(o.placa)) placasFiltradas.push(o.placa);
+      }
+    });
 
-  let placasFiltradas = [];
-  ordenes.forEach(o=>{
-    if(
-      o.placa.includes(filtroPlaca) &&
-      o.cliente.toLowerCase().includes(filtroCliente) &&
-      o.modelo.toLowerCase().includes(filtroModelo)
-    ){
-      if(!placasFiltradas.includes(o.placa)) placasFiltradas.push(o.placa);
+    placasFiltradas.forEach(p=>{
+      let o = ordenes.find(x=>x.placa===p);
+      listaHistorial.innerHTML+=`
+        <div class="card">
+          <b>${p}</b> - ${o.cliente} (${o.modelo})
+          <button onclick="verPerfil('${p}')">Abrir</button>
+        </div>`;
+    });
+  }
+
+  function verPerfil(placa){
+    ocultar();
+    perfil.style.display="block";
+    perfil.innerHTML=`<h3>${placa}</h3>
+      <button onclick="verHistorial()">⬅ Regresar al historial</button>
+      <button class="borrar" onclick="borrarVehiculo('${placa}')">Borrar todo historial</button>`;
+
+    ordenes.forEach((o,i)=>{
+      if(o.placa===placa){
+        perfil.innerHTML+=`
+          <div class="card">
+            <b>Fecha:</b> ${o.fecha}<br>
+            <b>Cliente:</b> ${o.cliente}<br>
+            <b>Teléfono:</b> ${o.telefono}<br>
+            <b>Modelo:</b> ${o.modelo}<br>
+            <b>Km:</b> ${o.km}<br>
+            <b>Falla:</b> ${o.falla}<br>
+            <b>Servicio:</b> ${o.servicio}<br>
+            <b>Observaciones:</b> ${o.obs}<br>
+            <button class="editar" onclick="editar(${i})">Editar</button>
+            <button class="borrar" onclick="borrar(${i})">Borrar</button>
+          </div>`;
+      }
+    });
+  }
+
+  function editar(i){
+    let o=ordenes[i];
+    editando=i;
+    fecha.value=o.fecha;
+    cliente.value=o.cliente;
+    telefono.value=o.telefono;
+    placa.value=o.placa;
+    modelo.value=o.modelo;
+    km.value=o.km;
+    falla.value=o.falla;
+    servicio.value=o.servicio;
+    obs.value=o.obs;
+    tituloOrden.innerText="Editar orden";
+    verNueva();
+  }
+
+  function borrar(i){
+    if(confirm("¿Borrar esta orden?")){
+      ordenes.splice(i,1);
+      localStorage.setItem("ordenes",JSON.stringify(ordenes));
+      verInicio();
     }
-  });
+  }
 
-  placasFiltradas.forEach(p=>{
-    let o = ordenes.find(x=>x.placa===p);
-    listaHistorial.innerHTML+=`
-      <div class="card">
-        <b>${p}</b> - ${o.cliente} (${o.modelo})
-        <button onclick="verPerfil('${p}')">Abrir</button>
-      </div>`;
-  });
-}
-
-function verPerfil(placa){
-  ocultar();
-  perfil.style.display="block";
-  perfil.innerHTML=`<h3>${placa}</h3>
-  <button onclick="verHistorial()">⬅ Regresar al historial</button>
-  <button class="borrar" onclick="borrarVehiculo('${placa}')">Borrar todo historial</button>`;
-
-  ordenes.forEach((o,i)=>{
-    if(o.placa===placa){
-      perfil.innerHTML+=`
-      <div class="card">
-        <b>Fecha:</b> ${o.fecha}<br>
-        <b>Cliente:</b> ${o.cliente}<br>
-        <b>Teléfono:</b> ${o.telefono}<br>
-        <b>Modelo:</b> ${o.modelo}<br>
-        <b>Km:</b> ${o.km}<br>
-        <b>Falla:</b> ${o.falla}<br>
-        <b>Servicio:</b> ${o.servicio}<br>
-        <b>Observaciones:</b> ${o.obs}<br>
-        <button class="editar" onclick="editar(${i})">Editar</button>
-        <button class="borrar" onclick="borrar(${i})">Borrar</button>
-      </div>`;
+  function borrarVehiculo(placa){
+    if(confirm("¿Borrar todo el historial de este vehículo?")){
+      ordenes=ordenes.filter(o=>o.placa!==placa);
+      localStorage.setItem("ordenes",JSON.stringify(ordenes));
+      verInicio();
     }
-  });
-}
-
-function editar(i){
-  let o=ordenes[i];
-  editando=i;
-  fecha.value=o.fecha;
-  cliente.value=o.cliente;
-  telefono.value=o.telefono;
-  placa.value=o.placa;
-  modelo.value=o.modelo;
-  km.value=o.km;
-  falla.value=o.falla;
-  servicio.value=o.servicio;
-  obs.value=o.obs;
-  tituloOrden.innerText="Editar orden";
-  verNueva();
-}
-
-function borrar(i){
-  if(confirm("¿Borrar esta orden?")){
-    ordenes.splice(i,1);
-    localStorage.setItem("ordenes",JSON.stringify(ordenes));
-    verInicio();
   }
-}
 
-function borrarVehiculo(placa){
-  if(confirm("¿Borrar todo el historial de este vehículo?")){
-    ordenes=ordenes.filter(o=>o.placa!==placa);
-    localStorage.setItem("ordenes",JSON.stringify(ordenes));
-    verInicio();
-  }
-}
-
-// Inicializar vista
-verInicio();
+  // Inicializar
+  verInicio();
 </script>
 
 </body>
 </html>
+
+
