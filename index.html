@@ -102,14 +102,12 @@ input,textarea{
 </div>
 
 <!-- PERFIL -->
-<div id="perfil" class="section">
-  <button onclick="verHistorial()">⬅ Regresar al historial</button>
-</div>
+<div id="perfil" class="section"></div>
 
 <!-- Conexión con Supabase -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-// Inicializar Supabase correctamente
+// Inicializar Supabase
 const supabase = supabase.createClient(
   "https://zgqurqdngeousjyhqdqx.supabase.co",
   "sb_publishable_DDJfU4vUSQerI-uKZrOKOA_qZLBs3B1"
@@ -118,7 +116,7 @@ const supabase = supabase.createClient(
 let ordenes = [];
 let editando = null;
 
-// Obtener referencias a elementos
+// Referencias DOM
 const inicio = document.getElementById("inicio");
 const nueva = document.getElementById("nueva");
 const historial = document.getElementById("historial");
@@ -139,25 +137,12 @@ const buscarPlaca = document.getElementById("buscarPlaca");
 const buscarCliente = document.getElementById("buscarCliente");
 const buscarModelo = document.getElementById("buscarModelo");
 
-// Funciones
-async function cargarOrdenes() {
-  const { data, error } = await supabase
-    .from("ordenes")
-    .select("*")
-    .order('id', { ascending: true });
-
-  if (!error) {
-    ordenes = data;
-    cargarRecientes();
-  } else {
-    alert("Error cargando órdenes: " + error.message);
-  }
-}
-
+// Ocultar secciones
 function ocultar(){
   [inicio,nueva,historial,perfil].forEach(s => s.style.display="none");
 }
 
+// Ver secciones
 function verInicio(){
   ocultar();
   inicio.style.display="block";
@@ -188,7 +173,7 @@ function verHistorial(){
   cargarHistorial();
 }
 
-// Fecha hoy en DD/MM/AAAA
+// Fecha actual
 function obtenerFechaHoy(){
   let f = new Date();
   let d = String(f.getDate()).padStart(2,"0");
@@ -197,7 +182,7 @@ function obtenerFechaHoy(){
   return `${d}/${m}/${y}`;
 }
 
-// Guardar orden en Supabase
+// Guardar orden
 async function guardar(){
   let fechaInput = fecha.value || obtenerFechaHoy();
 
@@ -214,15 +199,10 @@ async function guardar(){
   };
 
   if(editando !== null){
-    await supabase
-      .from("ordenes")
-      .update(orden)
-      .eq("id", ordenes[editando].id);
+    await supabase.from("ordenes").update(orden).eq("id", ordenes[editando].id);
     editando = null;
   } else {
-    await supabase
-      .from("ordenes")
-      .insert([orden]);
+    await supabase.from("ordenes").insert([orden]);
   }
 
   fecha.value = "";
@@ -239,18 +219,22 @@ async function guardar(){
   verInicio();
 }
 
+// Cargar últimas órdenes
 function cargarRecientes(){
   recientes.innerHTML="";
-  ordenes.slice(-5).reverse().forEach((o,i)=>{
-    recientes.innerHTML+=`
-      <div class="card">
-        <b>${o.placa}</b> - ${o.cliente}<br>
-        ${o.fecha}
-        <button onclick="verPerfil('${o.placa}')">Ver</button>
-      </div>`;
+  ordenes.slice(-5).reverse().forEach(o=>{
+    const card = document.createElement("div");
+    card.className = "card";
+    card.innerHTML = `<b>${o.placa}</b> - ${o.cliente}<br>${o.fecha}`;
+    const btnVer = document.createElement("button");
+    btnVer.textContent = "Ver";
+    btnVer.onclick = () => verPerfil(o.placa);
+    card.appendChild(btnVer);
+    recientes.appendChild(card);
   });
 }
 
+// Cargar historial filtrado
 function cargarHistorial(){
   listaHistorial.innerHTML="";
 
@@ -260,37 +244,52 @@ function cargarHistorial(){
 
   let placasFiltradas = [];
   ordenes.forEach(o=>{
-    if(
-      o.placa.includes(filtroPlaca) &&
-      o.cliente.toLowerCase().includes(filtroCliente) &&
-      o.modelo.toLowerCase().includes(filtroModelo)
-    ){
+    if(o.placa.includes(filtroPlaca) &&
+       o.cliente.toLowerCase().includes(filtroCliente) &&
+       o.modelo.toLowerCase().includes(filtroModelo)){
       if(!placasFiltradas.includes(o.placa)) placasFiltradas.push(o.placa);
     }
   });
 
   placasFiltradas.forEach(p=>{
     let o = ordenes.find(x=>x.placa===p);
-    listaHistorial.innerHTML+=`
-      <div class="card">
-        <b>${p}</b> - ${o.cliente} (${o.modelo})
-        <button onclick="verPerfil('${p}')">Abrir</button>
-      </div>`;
+    const card = document.createElement("div");
+    card.className = "card";
+    card.innerHTML = `<b>${p}</b> - ${o.cliente} (${o.modelo})`;
+    const btnAbrir = document.createElement("button");
+    btnAbrir.textContent = "Abrir";
+    btnAbrir.onclick = () => verPerfil(p);
+    card.appendChild(btnAbrir);
+    listaHistorial.appendChild(card);
   });
 }
 
+// Ver perfil de vehículo
 function verPerfil(placaVehiculo){
   ocultar();
-  perfil.style.display="block";
+  perfil.style.display = "block";
+  perfil.innerHTML = "";
 
-  perfil.innerHTML=`<h3>${placaVehiculo}</h3>
-  <button onclick="verHistorial()">⬅ Regresar al historial</button>
-  <button class="borrar" onclick="borrarVehiculo('${placaVehiculo}')">Borrar todo historial</button>`;
+  const cabecera = document.createElement("div");
+  cabecera.innerHTML = `<h3>${placaVehiculo}</h3>`;
+  perfil.appendChild(cabecera);
+
+  const btnHistorial = document.createElement("button");
+  btnHistorial.textContent = "⬅ Regresar al historial";
+  btnHistorial.onclick = verHistorial;
+  perfil.appendChild(btnHistorial);
+
+  const btnBorrarTodo = document.createElement("button");
+  btnBorrarTodo.textContent = "Borrar todo historial";
+  btnBorrarTodo.className = "borrar";
+  btnBorrarTodo.onclick = () => borrarVehiculo(placaVehiculo);
+  perfil.appendChild(btnBorrarTodo);
 
   ordenes.forEach((o,i)=>{
     if(o.placa===placaVehiculo){
-      perfil.innerHTML+=`
-      <div class="card">
+      const card = document.createElement("div");
+      card.className = "card";
+      card.innerHTML = `
         <b>Fecha:</b> ${o.fecha}<br>
         <b>Cliente:</b> ${o.cliente}<br>
         <b>Teléfono:</b> ${o.telefono}<br>
@@ -299,15 +298,28 @@ function verPerfil(placaVehiculo){
         <b>Falla:</b> ${o.falla}<br>
         <b>Servicio:</b> ${o.servicio}<br>
         <b>Observaciones:</b> ${o.obs}<br>
-        <button class="editar" onclick="editar(${i})">Editar</button>
-        <button class="borrar" onclick="borrar(${i})">Borrar</button>
-      </div>`;
+      `;
+
+      const btnEditar = document.createElement("button");
+      btnEditar.className = "editar";
+      btnEditar.textContent = "Editar";
+      btnEditar.onclick = () => editar(i);
+      card.appendChild(btnEditar);
+
+      const btnBorrar = document.createElement("button");
+      btnBorrar.className = "borrar";
+      btnBorrar.textContent = "Borrar";
+      btnBorrar.onclick = () => borrar(i);
+      card.appendChild(btnBorrar);
+
+      perfil.appendChild(card);
     }
   });
 }
 
+// Editar orden
 function editar(i){
-  let o = ordenes[i];
+  const o = ordenes[i];
   editando = i;
   fecha.value = o.fecha;
   cliente.value = o.cliente;
@@ -322,33 +334,27 @@ function editar(i){
   verNueva();
 }
 
+// Borrar orden
 async function borrar(i){
   if(confirm("¿Borrar esta orden?")){
-    await supabase
-      .from("ordenes")
-      .delete()
-      .eq("id", ordenes[i].id);
+    await supabase.from("ordenes").delete().eq("id", ordenes[i].id);
     cargarOrdenes();
   }
 }
 
+// Borrar historial de vehículo
 async function borrarVehiculo(placaVehiculo){
   if(confirm("¿Borrar todo el historial de este vehículo?")){
-    await supabase
-      .from("ordenes")
-      .delete()
-      .eq("placa", placaVehiculo);
+    await supabase.from("ordenes").delete().eq("placa", placaVehiculo);
     cargarOrdenes();
     verInicio();
   }
 }
 
-// Cargar datos iniciales
+// Inicializar
 cargarOrdenes();
 verInicio();
 </script>
 
 </body>
 </html>
-
-
