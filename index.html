@@ -102,9 +102,7 @@ input,textarea{
 </div>
 
 <!-- PERFIL -->
-<div id="perfil" class="section">
-  <button onclick="verHistorial()">⬅ Regresar al historial</button>
-</div>
+<div id="perfil" class="section"></div>
 
 <!-- Supabase -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/supabase.min.js"></script>
@@ -158,6 +156,8 @@ function obtenerFechaHoy(){
 
 // FUNCION GUARDAR
 async function guardar(){
+  console.log("Guardar presionado");
+
   const fechaElem = document.getElementById("fecha");
   const clienteElem = document.getElementById("cliente");
   const telefonoElem = document.getElementById("telefono");
@@ -167,6 +167,11 @@ async function guardar(){
   const fallaElem = document.getElementById("falla");
   const servicioElem = document.getElementById("servicio");
   const obsElem = document.getElementById("obs");
+
+  if(!clienteElem.value || !placaElem.value){
+    alert("Cliente y Placa son obligatorios");
+    return;
+  }
 
   let fechaInput = fechaElem.value || obtenerFechaHoy();
 
@@ -196,10 +201,15 @@ async function guardar(){
     const { data, error } = await supabase
       .from('ordenes')
       .insert([orden]);
-    if(error) console.error("Error Supabase:", error);
-    else console.log("Guardado en Supabase:", data);
+    if(error) {
+      console.error("Error Supabase:", error);
+      alert("Error al guardar en Supabase: " + error.message);
+    } else {
+      console.log("Guardado en Supabase:", data);
+    }
   } catch(e){
     console.error("Error de conexión con Supabase:", e);
+    alert("Error de conexión con Supabase");
   }
 
   ["fecha","cliente","telefono","placa","modelo","km","falla","servicio","obs"].forEach(id=>{
@@ -276,11 +286,19 @@ function verPerfil(placa){
 }
 
 function editar(i){
-  let o=ordenes[i];
-  editando=i;
-  ["fecha","cliente","telefono","placa","modelo","km","falla","servicio","obs"].forEach(id=>{
-    document.getElementById(id).value = o[id] || o[id==="km"?"km":"obs"]; 
-  });
+  let o = ordenes[i];
+  editando = i;
+
+  document.getElementById("fecha").value = o.fecha || "";
+  document.getElementById("cliente").value = o.cliente || "";
+  document.getElementById("telefono").value = o.telefono || "";
+  document.getElementById("placa").value = o.placa || "";
+  document.getElementById("modelo").value = o.modelo || "";
+  document.getElementById("km").value = o.km || "";
+  document.getElementById("falla").value = o.falla || "";
+  document.getElementById("servicio").value = o.servicio || "";
+  document.getElementById("obs").value = o.obs || "";
+
   document.getElementById("tituloOrden").innerText="Editar orden";
   verNueva();
 }
@@ -295,7 +313,7 @@ function borrar(i){
 
 function borrarVehiculo(placa){
   if(confirm("¿Borrar todo el historial de este vehículo?")){
-    ordenes=ordenes.filter(o=>o.placa!==placa);
+    ordenes = ordenes.filter(o=>o.placa!==placa);
     localStorage.setItem("ordenes",JSON.stringify(ordenes));
     verInicio();
   }
@@ -306,6 +324,8 @@ verInicio();
 
 </body>
 </html>
+
+
 
 
 
