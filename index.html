@@ -105,18 +105,22 @@ input,textarea{
 <div id="perfil" class="section">
   <button onclick="verHistorial()">⬅ Regresar al historial</button>
 </div>
+
+<!-- Cargar Supabase -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/supabase.min.js"></script>
 
 <script>
-  // Inicializar Supabase
+// Inicializar Supabase
 const supabaseClient = supabase.createClient(
   "https://zgqurqdngeousjyhqdqx.supabase.co",
   "sb_publishable_DDJfU4vUSQerI-uKZrOKOA_qZLBs3B1"
 );
 
+// Variables
 let ordenes = JSON.parse(localStorage.getItem("ordenes") || "[]");
 let editando = null;
 
+// Funciones
 function ocultar(){
   ["inicio","nueva","historial","perfil"].forEach(id=>{
     document.getElementById(id).style.display="none";
@@ -153,7 +157,6 @@ function verHistorial(){
   cargarHistorial();
 }
 
-// Fecha hoy en DD/MM/AAAA
 function obtenerFechaHoy(){
   let f = new Date();
   let d = String(f.getDate()).padStart(2,"0");
@@ -162,7 +165,8 @@ function obtenerFechaHoy(){
   return `${d}/${m}/${y}`;
 }
 
-function guardar(){
+// Guardar orden en localStorage y Supabase
+async function guardar(){
   let fechaInput = fecha.value || obtenerFechaHoy();
 
   let orden = {
@@ -180,20 +184,24 @@ function guardar(){
   if(editando !== null){
     ordenes[editando] = orden;
     editando = null;
-    localStorage.setItem("ordenes", JSON.stringify(ordenes));
-    verInicio();
   } else {
-    let existePlaca = ordenes.some(o => o.placa === orden.placa);
     ordenes.push(orden);
-    localStorage.setItem("ordenes", JSON.stringify(ordenes));
-
-    if(existePlaca){
-      verPerfil(orden.placa);
-    } else {
-      verInicio();
-    }
   }
 
+  // Guardar en localStorage
+  localStorage.setItem("ordenes", JSON.stringify(ordenes));
+
+  // Guardar en Supabase
+  try {
+    const { data, error } = await supabaseClient
+      .from('ordenes') // Asegúrate de que esta tabla exista en Supabase
+      .insert([orden]);
+    if(error) console.error("Error guardando en Supabase:", error);
+  } catch(e) {
+    console.error("Error guardando en Supabase:", e);
+  }
+
+  // Limpiar inputs
   fecha.value = "";
   cliente.value = "";
   telefono.value = "";
@@ -203,6 +211,14 @@ function guardar(){
   falla.value = "";
   servicio.value = "";
   obs.value = "";
+
+  // Mostrar vista correcta
+  let existePlaca = ordenes.some(o => o.placa === orden.placa);
+  if(existePlaca){
+    verPerfil(orden.placa);
+  } else {
+    verInicio();
+  }
 }
 
 function cargarRecientes(){
@@ -303,6 +319,7 @@ function borrarVehiculo(placa){
   }
 }
 
+// Inicializar vista
 verInicio();
 </script>
 
