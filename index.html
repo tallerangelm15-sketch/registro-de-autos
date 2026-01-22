@@ -32,7 +32,6 @@ button{
   border:none;
   border-radius:8px;
   font-weight:bold;
-  cursor:pointer;
 }
 button.editar{ background:#2563eb; }
 button.borrar{ background:#7f1d1d; }
@@ -69,9 +68,9 @@ input,textarea{
   <h2>🔧 Servicio Automotriz Ángel</h2>
 </header>
 
-<button id="btnInicio">Inicio</button>
-<button id="btnNueva">Nueva orden</button>
-<button id="btnHistorial">Historial</button>
+<button onclick="verInicio()">Inicio</button>
+<button onclick="verNueva()">Nueva orden</button>
+<button onclick="verHistorial()">Historial</button>
 
 <!-- INICIO -->
 <div id="inicio" class="section">
@@ -90,239 +89,214 @@ input,textarea{
   <textarea id="falla" placeholder="Falla"></textarea>
   <textarea id="servicio" placeholder="Servicio"></textarea>
   <textarea id="obs" placeholder="Observaciones"></textarea>
-  <button id="btnGuardar">Guardar</button>
+  <button onclick="guardar()">Guardar</button>
 </div>
 
 <!-- HISTORIAL -->
 <div id="historial" class="section">
-  <input id="buscarPlaca" placeholder="Buscar por placa">
-  <input id="buscarCliente" placeholder="Buscar por cliente">
-  <input id="buscarModelo" placeholder="Buscar por modelo">
-  <button id="btnVolverInicio">⬅ Regresar al inicio</button>
+  <input id="buscarPlaca" placeholder="Buscar por placa" oninput="cargarHistorial()">
+  <input id="buscarCliente" placeholder="Buscar por cliente" oninput="cargarHistorial()">
+  <input id="buscarModelo" placeholder="Buscar por modelo" oninput="cargarHistorial()">
+  <button onclick="verInicio()">⬅ Regresar al inicio</button>
   <div id="listaHistorial"></div>
 </div>
 
 <!-- PERFIL -->
-<div id="perfil" class="section"></div>
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/supabase.min.js"></script>
+<div id="perfil" class="section">
+  <button onclick="verHistorial()">⬅ Regresar al historial</button>
+</div>
 
 <script>
-document.addEventListener("DOMContentLoaded", () => {
+let ordenes = JSON.parse(localStorage.getItem("ordenes") || "[]");
+let editando = null;
 
-  const supabase = supabase.createClient(
-    "https://zgqurqdngeousjyhqdqx.supabase.co",
-    "sb_publishable_DDJfU4vUSQerI-uKZrOKOA_qZLBs3B1"
-  );
+function ocultar(){
+  ["inicio","nueva","historial","perfil"].forEach(id=>{
+    document.getElementById(id).style.display="none";
+  });
+}
 
-  let ordenes = JSON.parse(localStorage.getItem("ordenes") || "[]");
-  let editando = null;
+function verInicio(){
+  ocultar();
+  inicio.style.display="block";
+  cargarRecientes();
+}
 
-  // ------------------- FUNCIONES -------------------
-  function ocultar(){
-    ["inicio","nueva","historial","perfil"].forEach(id=>{
-      document.getElementById(id).style.display="none";
-    });
+function verNueva(){
+  ocultar();
+  nueva.style.display="block";
+  tituloOrden.innerText = editando !== null ? "Editar orden" : "Nueva orden";
+
+  if(editando === null){
+    fecha.value = "";
+    cliente.value = "";
+    telefono.value = "";
+    placa.value = "";
+    modelo.value = "";
+    km.value = "";
+    falla.value = "";
+    servicio.value = "";
+    obs.value = "";
   }
+}
 
-  function verInicio(){
-    ocultar();
-    document.getElementById("inicio").style.display="block";
-    cargarRecientes();
-  }
+function verHistorial(){
+  ocultar();
+  historial.style.display="block";
+  cargarHistorial();
+}
 
-  function verNueva(){
-    ocultar();
-    document.getElementById("nueva").style.display="block";
-    document.getElementById("tituloOrden").innerText = editando !== null ? "Editar orden" : "Nueva orden";
+// Fecha hoy en DD/MM/AAAA
+function obtenerFechaHoy(){
+  let f = new Date();
+  let d = String(f.getDate()).padStart(2,"0");
+  let m = String(f.getMonth()+1).padStart(2,"0");
+  let y = f.getFullYear();
+  return `${d}/${m}/${y}`;
+}
 
-    if(editando === null){
-      ["fecha","cliente","telefono","placa","modelo","km","falla","servicio","obs"].forEach(id=>{
-        document.getElementById(id).value="";
-      });
-    }
-  }
+function guardar(){
+  let fechaInput = fecha.value || obtenerFechaHoy();
 
-  function verHistorial(){
-    ocultar();
-    document.getElementById("historial").style.display="block";
-    cargarHistorial();
-  }
+  let orden = {
+    fecha: fechaInput,
+    cliente: cliente.value,
+    telefono: telefono.value,
+    placa: placa.value.toUpperCase(),
+    modelo: modelo.value,
+    km: km.value,
+    falla: falla.value,
+    servicio: servicio.value,
+    obs: obs.value
+  };
 
-  function obtenerFechaHoy(){
-    let f = new Date();
-    let d = String(f.getDate()).padStart(2,"0");
-    let m = String(f.getMonth()+1).padStart(2,"0");
-    let y = f.getFullYear();
-    return `${d}/${m}/${y}`;
-  }
-
-  async function guardar() {
-    console.log("Botón Guardar presionado"); // <-- Esto confirma que funciona
-    const fechaElem = document.getElementById("fecha");
-    const clienteElem = document.getElementById("cliente");
-    const telefonoElem = document.getElementById("telefono");
-    const placaElem = document.getElementById("placa");
-    const modeloElem = document.getElementById("modelo");
-    const kmElem = document.getElementById("km");
-    const fallaElem = document.getElementById("falla");
-    const servicioElem = document.getElementById("servicio");
-    const obsElem = document.getElementById("obs");
-
-    if(!clienteElem.value || !placaElem.value){
-      alert("Cliente y Placa son obligatorios");
-      return;
-    }
-
-    let fechaInput = fechaElem.value || obtenerFechaHoy();
-
-    let orden = {
-      fecha: fechaInput,
-      cliente: clienteElem.value,
-      telefono: telefonoElem.value,
-      placa: placaElem.value.toUpperCase(),
-      modelo: modeloElem.value,
-      km: kmElem.value,
-      falla: fallaElem.value,
-      servicio: servicioElem.value,
-      obs: obsElem.value
-    };
-
-    if(editando !== null){
-      ordenes[editando] = orden;
-      editando = null;
-    } else {
-      ordenes.push(orden);
-    }
-
+  if(editando !== null){
+    ordenes[editando] = orden;
+    editando = null;
+    localStorage.setItem("ordenes", JSON.stringify(ordenes));
+    verInicio();
+  } else {
+    let existePlaca = ordenes.some(o => o.placa === orden.placa);
+    ordenes.push(orden);
     localStorage.setItem("ordenes", JSON.stringify(ordenes));
 
-    // Guardar en Supabase
-    try {
-      const { data, error } = await supabase.from('ordenes').insert([orden]);
-      if(error) alert("Error Supabase: " + error.message);
-      else console.log("Guardado en Supabase:", data);
-    } catch(e){
-      alert("Error de conexión con Supabase");
-      console.error(e);
-    }
-
-    ["fecha","cliente","telefono","placa","modelo","km","falla","servicio","obs"].forEach(id=>{
-      document.getElementById(id).value="";
-    });
-
-    verInicio();
-  }
-
-  function cargarRecientes(){
-    const recientes = document.getElementById("recientes");
-    recientes.innerHTML="";
-    ordenes.slice(-5).reverse().forEach(o=>{
-      recientes.innerHTML+=`
-        <div class="card">
-          <b>${o.placa}</b> - ${o.cliente}<br>
-          ${o.fecha}
-          <button onclick="verPerfil('${o.placa}')">Ver</button>
-        </div>`;
-    });
-  }
-
-  function cargarHistorial(){
-    const listaHistorial = document.getElementById("listaHistorial");
-    listaHistorial.innerHTML="";
-    const filtroPlaca = document.getElementById("buscarPlaca").value.toUpperCase();
-    const filtroCliente = document.getElementById("buscarCliente").value.toLowerCase();
-    const filtroModelo = document.getElementById("buscarModelo").value.toLowerCase();
-    let placasFiltradas = [];
-
-    ordenes.forEach(o=>{
-      if(o.placa.includes(filtroPlaca) &&
-         o.cliente.toLowerCase().includes(filtroCliente) &&
-         o.modelo.toLowerCase().includes(filtroModelo)){
-        if(!placasFiltradas.includes(o.placa)) placasFiltradas.push(o.placa);
-      }
-    });
-
-    placasFiltradas.forEach(p=>{
-      let o = ordenes.find(x=>x.placa===p);
-      listaHistorial.innerHTML+=`
-        <div class="card">
-          <b>${p}</b> - ${o.cliente} (${o.modelo})
-          <button onclick="verPerfil('${p}')">Abrir</button>
-        </div>`;
-    });
-  }
-
-  window.verPerfil = function(placa){
-    ocultar();
-    const perfil = document.getElementById("perfil");
-    perfil.style.display="block";
-    perfil.innerHTML=`<h3>${placa}</h3>
-        <button id="btnVolverHistorial">⬅ Regresar al historial</button>
-        <button class="borrar" onclick="borrarVehiculo('${placa}')">Borrar todo historial</button>`;
-
-    ordenes.forEach((o,i)=>{
-      if(o.placa===placa){
-        perfil.innerHTML+=`
-          <div class="card">
-            <b>Fecha:</b> ${o.fecha}<br>
-            <b>Cliente:</b> ${o.cliente}<br>
-            <b>Teléfono:</b> ${o.telefono}<br>
-            <b>Modelo:</b> ${o.modelo}<br>
-            <b>Km:</b> ${o.km}<br>
-            <b>Falla:</b> ${o.falla}<br>
-            <b>Servicio:</b> ${o.servicio}<br>
-            <b>Observaciones:</b> ${o.obs}<br>
-            <button class="editar" onclick="editar(${i})">Editar</button>
-            <button class="borrar" onclick="borrar(${i})">Borrar</button>
-          </div>`;
-      }
-    });
-
-    document.getElementById("btnVolverHistorial").addEventListener("click", verHistorial);
-  }
-
-  function editar(i){
-    let o = ordenes[i];
-    editando = i;
-
-    ["fecha","cliente","telefono","placa","modelo","km","falla","servicio","obs"].forEach(id=>{
-      document.getElementById(id).value = o[id] || "";
-    });
-
-    document.getElementById("tituloOrden").innerText="Editar orden";
-    verNueva();
-  }
-
-  function borrar(i){
-    if(confirm("¿Borrar esta orden?")){
-      ordenes.splice(i,1);
-      localStorage.setItem("ordenes",JSON.stringify(ordenes));
+    if(existePlaca){
+      verPerfil(orden.placa);
+    } else {
       verInicio();
     }
   }
 
-  function borrarVehiculo(placa){
-    if(confirm("¿Borrar todo el historial de este vehículo?")){
-      ordenes = ordenes.filter(o=>o.placa!==placa);
-      localStorage.setItem("ordenes",JSON.stringify(ordenes));
-      verInicio();
-    }
-  }
+  fecha.value = "";
+  cliente.value = "";
+  telefono.value = "";
+  placa.value = "";
+  modelo.value = "";
+  km.value = "";
+  falla.value = "";
+  servicio.value = "";
+  obs.value = "";
+}
 
-  // ------------------- LISTENERS -------------------
-  document.getElementById("btnGuardar").addEventListener("click", guardar);
-  document.getElementById("btnInicio").addEventListener("click", verInicio);
-  document.getElementById("btnNueva").addEventListener("click", verNueva);
-  document.getElementById("btnHistorial").addEventListener("click", verHistorial);
-  document.getElementById("btnVolverInicio").addEventListener("click", verInicio);
-  ["buscarPlaca","buscarCliente","buscarModelo"].forEach(id=>{
-      document.getElementById(id).addEventListener("input", cargarHistorial);
+function cargarRecientes(){
+  recientes.innerHTML="";
+  ordenes.slice(-5).reverse().forEach(o=>{
+    recientes.innerHTML+=`
+      <div class="card">
+        <b>${o.placa}</b> - ${o.cliente}<br>
+        ${o.fecha}
+        <button onclick="verPerfil('${o.placa}')">Ver</button>
+      </div>`;
+  });
+}
+
+function cargarHistorial(){
+  listaHistorial.innerHTML="";
+
+  let filtroPlaca = buscarPlaca.value.toUpperCase();
+  let filtroCliente = buscarCliente.value.toLowerCase();
+  let filtroModelo = buscarModelo.value.toLowerCase();
+
+  let placasFiltradas = [];
+  ordenes.forEach(o=>{
+    if(
+      o.placa.includes(filtroPlaca) &&
+      o.cliente.toLowerCase().includes(filtroCliente) &&
+      o.modelo.toLowerCase().includes(filtroModelo)
+    ){
+      if(!placasFiltradas.includes(o.placa)) placasFiltradas.push(o.placa);
+    }
   });
 
-  verInicio();
+  placasFiltradas.forEach(p=>{
+    let o = ordenes.find(x=>x.placa===p);
+    listaHistorial.innerHTML+=`
+      <div class="card">
+        <b>${p}</b> - ${o.cliente} (${o.modelo})
+        <button onclick="verPerfil('${p}')">Abrir</button>
+      </div>`;
+  });
+}
 
-});
+function verPerfil(placa){
+  ocultar();
+  perfil.style.display="block";
+  perfil.innerHTML=`<h3>${placa}</h3>
+  <button onclick="verHistorial()">⬅ Regresar al historial</button>
+  <button class="borrar" onclick="borrarVehiculo('${placa}')">Borrar todo historial</button>`;
+
+  ordenes.forEach((o,i)=>{
+    if(o.placa===placa){
+      perfil.innerHTML+=`
+      <div class="card">
+        <b>Fecha:</b> ${o.fecha}<br>
+        <b>Cliente:</b> ${o.cliente}<br>
+        <b>Teléfono:</b> ${o.telefono}<br>
+        <b>Modelo:</b> ${o.modelo}<br>
+        <b>Km:</b> ${o.km}<br>
+        <b>Falla:</b> ${o.falla}<br>
+        <b>Servicio:</b> ${o.servicio}<br>
+        <b>Observaciones:</b> ${o.obs}<br>
+        <button class="editar" onclick="editar(${i})">Editar</button>
+        <button class="borrar" onclick="borrar(${i})">Borrar</button>
+      </div>`;
+    }
+  });
+}
+
+function editar(i){
+  let o=ordenes[i];
+  editando=i;
+  fecha.value=o.fecha;
+  cliente.value=o.cliente;
+  telefono.value=o.telefono;
+  placa.value=o.placa;
+  modelo.value=o.modelo;
+  km.value=o.km;
+  falla.value=o.falla;
+  servicio.value=o.servicio;
+  obs.value=o.obs;
+  tituloOrden.innerText="Editar orden";
+  verNueva();
+}
+
+function borrar(i){
+  if(confirm("¿Borrar esta orden?")){
+    ordenes.splice(i,1);
+    localStorage.setItem("ordenes",JSON.stringify(ordenes));
+    verInicio();
+  }
+}
+
+function borrarVehiculo(placa){
+  if(confirm("¿Borrar todo el historial de este vehículo?")){
+    ordenes=ordenes.filter(o=>o.placa!==placa);
+    localStorage.setItem("ordenes",JSON.stringify(ordenes));
+    verInicio();
+  }
+}
+
+verInicio();
 </script>
 
 </body>
