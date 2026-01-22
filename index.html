@@ -69,9 +69,9 @@ input,textarea{
   <h2>🔧 Servicio Automotriz Ángel</h2>
 </header>
 
-<button onclick="verInicio()">Inicio</button>
-<button onclick="verNueva()">Nueva orden</button>
-<button onclick="verHistorial()">Historial</button>
+<button id="btnInicio">Inicio</button>
+<button id="btnNueva">Nueva orden</button>
+<button id="btnHistorial">Historial</button>
 
 <!-- INICIO -->
 <div id="inicio" class="section">
@@ -90,22 +90,21 @@ input,textarea{
   <textarea id="falla" placeholder="Falla"></textarea>
   <textarea id="servicio" placeholder="Servicio"></textarea>
   <textarea id="obs" placeholder="Observaciones"></textarea>
-  <button onclick="guardar()">Guardar</button>
+  <button id="btnGuardar">Guardar</button>
 </div>
 
 <!-- HISTORIAL -->
 <div id="historial" class="section">
-  <input id="buscarPlaca" placeholder="Buscar por placa" oninput="cargarHistorial()">
-  <input id="buscarCliente" placeholder="Buscar por cliente" oninput="cargarHistorial()">
-  <input id="buscarModelo" placeholder="Buscar por modelo" oninput="cargarHistorial()">
-  <button onclick="verInicio()">⬅ Regresar al inicio</button>
+  <input id="buscarPlaca" placeholder="Buscar por placa">
+  <input id="buscarCliente" placeholder="Buscar por cliente">
+  <input id="buscarModelo" placeholder="Buscar por modelo">
+  <button id="btnVolverInicio">⬅ Regresar al inicio</button>
   <div id="listaHistorial"></div>
 </div>
 
 <!-- PERFIL -->
 <div id="perfil" class="section"></div>
 
-<!-- Supabase -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/supabase.min.js"></script>
 
 <script>
@@ -117,6 +116,7 @@ const supabase = supabase.createClient(
 let ordenes = JSON.parse(localStorage.getItem("ordenes") || "[]");
 let editando = null;
 
+// ------------------- FUNCIONES DE INTERFAZ -------------------
 function ocultar(){
   ["inicio","nueva","historial","perfil"].forEach(id=>{
     document.getElementById(id).style.display="none";
@@ -155,10 +155,9 @@ function obtenerFechaHoy(){
   return `${d}/${m}/${y}`;
 }
 
-// FUNCION GUARDAR (EXPOSICIÓN GLOBAL)
-window.guardar = async function guardar() {
+// ------------------- FUNCIONES PRINCIPALES -------------------
+async function guardar() {
   console.log("Guardar presionado");
-
   const fechaElem = document.getElementById("fecha");
   const clienteElem = document.getElementById("cliente");
   const telefonoElem = document.getElementById("telefono");
@@ -199,18 +198,12 @@ window.guardar = async function guardar() {
 
   // Guardar en Supabase
   try {
-    const { data, error } = await supabase
-      .from('ordenes')
-      .insert([orden]);
-    if(error) {
-      console.error("Error Supabase:", error);
-      alert("Error al guardar en Supabase: " + error.message);
-    } else {
-      console.log("Guardado en Supabase:", data);
-    }
+    const { data, error } = await supabase.from('ordenes').insert([orden]);
+    if(error) alert("Error Supabase: " + error.message);
+    else console.log("Guardado en Supabase:", data);
   } catch(e){
-    console.error("Error de conexión con Supabase:", e);
     alert("Error de conexión con Supabase");
+    console.error(e);
   }
 
   ["fecha","cliente","telefono","placa","modelo","km","falla","servicio","obs"].forEach(id=>{
@@ -218,7 +211,7 @@ window.guardar = async function guardar() {
   });
 
   verInicio();
-};
+}
 
 function cargarRecientes(){
   const recientes = document.getElementById("recientes");
@@ -264,7 +257,7 @@ function verPerfil(placa){
   const perfil = document.getElementById("perfil");
   perfil.style.display="block";
   perfil.innerHTML=`<h3>${placa}</h3>
-      <button onclick="verHistorial()">⬅ Regresar al historial</button>
+      <button id="btnVolverHistorial">⬅ Regresar al historial</button>
       <button class="borrar" onclick="borrarVehiculo('${placa}')">Borrar todo historial</button>`;
 
   ordenes.forEach((o,i)=>{
@@ -284,21 +277,18 @@ function verPerfil(placa){
         </div>`;
     }
   });
+
+  // listener seguro para volver
+  document.getElementById("btnVolverHistorial").addEventListener("click", verHistorial);
 }
 
 function editar(i){
   let o = ordenes[i];
   editando = i;
 
-  document.getElementById("fecha").value = o.fecha || "";
-  document.getElementById("cliente").value = o.cliente || "";
-  document.getElementById("telefono").value = o.telefono || "";
-  document.getElementById("placa").value = o.placa || "";
-  document.getElementById("modelo").value = o.modelo || "";
-  document.getElementById("km").value = o.km || "";
-  document.getElementById("falla").value = o.falla || "";
-  document.getElementById("servicio").value = o.servicio || "";
-  document.getElementById("obs").value = o.obs || "";
+  ["fecha","cliente","telefono","placa","modelo","km","falla","servicio","obs"].forEach(id=>{
+    document.getElementById(id).value = o[id] || "";
+  });
 
   document.getElementById("tituloOrden").innerText="Editar orden";
   verNueva();
@@ -320,11 +310,23 @@ function borrarVehiculo(placa){
   }
 }
 
+// ------------------- LISTENERS -------------------
+document.getElementById("btnGuardar").addEventListener("click", guardar);
+document.getElementById("btnInicio").addEventListener("click", verInicio);
+document.getElementById("btnNueva").addEventListener("click", verNueva);
+document.getElementById("btnHistorial").addEventListener("click", verHistorial);
+document.getElementById("btnVolverInicio")?.addEventListener("click", verInicio);
+["buscarPlaca","buscarCliente","buscarModelo"].forEach(id=>{
+  document.getElementById(id).addEventListener("input", cargarHistorial);
+});
+
 verInicio();
 </script>
 
 </body>
 </html>
+
+
 
 
 
