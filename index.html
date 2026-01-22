@@ -109,14 +109,37 @@ input,textarea{
 <!-- Conexión con Supabase -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+// Inicializar Supabase correctamente
 const supabase = supabase.createClient(
-  "https://zgqurqdngeousjyhqdqx.supabase.co"
+  "https://zgqurqdngeousjyhqdqx.supabase.co",
   "sb_publishable_DDJfU4vUSQerI-uKZrOKOA_qZLBs3B1"
 );
 
 let ordenes = [];
 let editando = null;
 
+// Obtener referencias a elementos
+const inicio = document.getElementById("inicio");
+const nueva = document.getElementById("nueva");
+const historial = document.getElementById("historial");
+const perfil = document.getElementById("perfil");
+const recientes = document.getElementById("recientes");
+const listaHistorial = document.getElementById("listaHistorial");
+const tituloOrden = document.getElementById("tituloOrden");
+const fecha = document.getElementById("fecha");
+const cliente = document.getElementById("cliente");
+const telefono = document.getElementById("telefono");
+const placa = document.getElementById("placa");
+const modelo = document.getElementById("modelo");
+const km = document.getElementById("km");
+const falla = document.getElementById("falla");
+const servicio = document.getElementById("servicio");
+const obs = document.getElementById("obs");
+const buscarPlaca = document.getElementById("buscarPlaca");
+const buscarCliente = document.getElementById("buscarCliente");
+const buscarModelo = document.getElementById("buscarModelo");
+
+// Funciones
 async function cargarOrdenes() {
   const { data, error } = await supabase
     .from("ordenes")
@@ -132,9 +155,7 @@ async function cargarOrdenes() {
 }
 
 function ocultar(){
-  ["inicio","nueva","historial","perfil"].forEach(id=>{
-    document.getElementById(id).style.display="none";
-  });
+  [inicio,nueva,historial,perfil].forEach(s => s.style.display="none");
 }
 
 function verInicio(){
@@ -258,15 +279,16 @@ function cargarHistorial(){
   });
 }
 
-function verPerfil(placa){
+function verPerfil(placaVehiculo){
   ocultar();
   perfil.style.display="block";
-  perfil.innerHTML=`<h3>${placa}</h3>
+
+  perfil.innerHTML=`<h3>${placaVehiculo}</h3>
   <button onclick="verHistorial()">⬅ Regresar al historial</button>
-  <button class="borrar" onclick="borrarVehiculo('${placa}')">Borrar todo historial</button>`;
+  <button class="borrar" onclick="borrarVehiculo('${placaVehiculo}')">Borrar todo historial</button>`;
 
   ordenes.forEach((o,i)=>{
-    if(o.placa===placa){
+    if(o.placa===placaVehiculo){
       perfil.innerHTML+=`
       <div class="card">
         <b>Fecha:</b> ${o.fecha}<br>
@@ -285,18 +307,18 @@ function verPerfil(placa){
 }
 
 function editar(i){
-  let o=ordenes[i];
-  editando=i;
-  fecha.value=o.fecha;
-  cliente.value=o.cliente;
-  telefono.value=o.telefono;
-  placa.value=o.placa;
-  modelo.value=o.modelo;
-  km.value=o.km;
-  falla.value=o.falla;
-  servicio.value=o.servicio;
-  obs.value=o.obs;
-  tituloOrden.innerText="Editar orden";
+  let o = ordenes[i];
+  editando = i;
+  fecha.value = o.fecha;
+  cliente.value = o.cliente;
+  telefono.value = o.telefono;
+  placa.value = o.placa;
+  modelo.value = o.modelo;
+  km.value = o.km;
+  falla.value = o.falla;
+  servicio.value = o.servicio;
+  obs.value = o.obs;
+  tituloOrden.innerText = "Editar orden";
   verNueva();
 }
 
@@ -310,21 +332,23 @@ async function borrar(i){
   }
 }
 
-async function borrarVehiculo(placa){
+async function borrarVehiculo(placaVehiculo){
   if(confirm("¿Borrar todo el historial de este vehículo?")){
     await supabase
       .from("ordenes")
       .delete()
-      .eq("placa", placa);
+      .eq("placa", placaVehiculo);
     cargarOrdenes();
     verInicio();
   }
 }
 
+// Cargar datos iniciales
 cargarOrdenes();
 verInicio();
 </script>
 
 </body>
 </html>
+
 
