@@ -108,223 +108,227 @@ input,textarea{
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/supabase.min.js"></script>
 
 <script>
-const supabase = supabase.createClient(
-  "https://zgqurqdngeousjyhqdqx.supabase.co",
-  "sb_publishable_DDJfU4vUSQerI-uKZrOKOA_qZLBs3B1"
-);
+document.addEventListener("DOMContentLoaded", () => {
 
-let ordenes = JSON.parse(localStorage.getItem("ordenes") || "[]");
-let editando = null;
+  const supabase = supabase.createClient(
+    "https://zgqurqdngeousjyhqdqx.supabase.co",
+    "sb_publishable_DDJfU4vUSQerI-uKZrOKOA_qZLBs3B1"
+  );
 
-// ------------------- FUNCIONES DE INTERFAZ -------------------
-function ocultar(){
-  ["inicio","nueva","historial","perfil"].forEach(id=>{
-    document.getElementById(id).style.display="none";
-  });
-}
+  let ordenes = JSON.parse(localStorage.getItem("ordenes") || "[]");
+  let editando = null;
 
-function verInicio(){
-  ocultar();
-  document.getElementById("inicio").style.display="block";
-  cargarRecientes();
-}
+  // ------------------- FUNCIONES -------------------
+  function ocultar(){
+    ["inicio","nueva","historial","perfil"].forEach(id=>{
+      document.getElementById(id).style.display="none";
+    });
+  }
 
-function verNueva(){
-  ocultar();
-  document.getElementById("nueva").style.display="block";
-  document.getElementById("tituloOrden").innerText = editando !== null ? "Editar orden" : "Nueva orden";
+  function verInicio(){
+    ocultar();
+    document.getElementById("inicio").style.display="block";
+    cargarRecientes();
+  }
 
-  if(editando === null){
+  function verNueva(){
+    ocultar();
+    document.getElementById("nueva").style.display="block";
+    document.getElementById("tituloOrden").innerText = editando !== null ? "Editar orden" : "Nueva orden";
+
+    if(editando === null){
+      ["fecha","cliente","telefono","placa","modelo","km","falla","servicio","obs"].forEach(id=>{
+        document.getElementById(id).value="";
+      });
+    }
+  }
+
+  function verHistorial(){
+    ocultar();
+    document.getElementById("historial").style.display="block";
+    cargarHistorial();
+  }
+
+  function obtenerFechaHoy(){
+    let f = new Date();
+    let d = String(f.getDate()).padStart(2,"0");
+    let m = String(f.getMonth()+1).padStart(2,"0");
+    let y = f.getFullYear();
+    return `${d}/${m}/${y}`;
+  }
+
+  async function guardar() {
+    console.log("Botón Guardar presionado"); // <-- Esto confirma que funciona
+    const fechaElem = document.getElementById("fecha");
+    const clienteElem = document.getElementById("cliente");
+    const telefonoElem = document.getElementById("telefono");
+    const placaElem = document.getElementById("placa");
+    const modeloElem = document.getElementById("modelo");
+    const kmElem = document.getElementById("km");
+    const fallaElem = document.getElementById("falla");
+    const servicioElem = document.getElementById("servicio");
+    const obsElem = document.getElementById("obs");
+
+    if(!clienteElem.value || !placaElem.value){
+      alert("Cliente y Placa son obligatorios");
+      return;
+    }
+
+    let fechaInput = fechaElem.value || obtenerFechaHoy();
+
+    let orden = {
+      fecha: fechaInput,
+      cliente: clienteElem.value,
+      telefono: telefonoElem.value,
+      placa: placaElem.value.toUpperCase(),
+      modelo: modeloElem.value,
+      km: kmElem.value,
+      falla: fallaElem.value,
+      servicio: servicioElem.value,
+      obs: obsElem.value
+    };
+
+    if(editando !== null){
+      ordenes[editando] = orden;
+      editando = null;
+    } else {
+      ordenes.push(orden);
+    }
+
+    localStorage.setItem("ordenes", JSON.stringify(ordenes));
+
+    // Guardar en Supabase
+    try {
+      const { data, error } = await supabase.from('ordenes').insert([orden]);
+      if(error) alert("Error Supabase: " + error.message);
+      else console.log("Guardado en Supabase:", data);
+    } catch(e){
+      alert("Error de conexión con Supabase");
+      console.error(e);
+    }
+
     ["fecha","cliente","telefono","placa","modelo","km","falla","servicio","obs"].forEach(id=>{
       document.getElementById(id).value="";
     });
-  }
-}
 
-function verHistorial(){
-  ocultar();
-  document.getElementById("historial").style.display="block";
-  cargarHistorial();
-}
-
-function obtenerFechaHoy(){
-  let f = new Date();
-  let d = String(f.getDate()).padStart(2,"0");
-  let m = String(f.getMonth()+1).padStart(2,"0");
-  let y = f.getFullYear();
-  return `${d}/${m}/${y}`;
-}
-
-// ------------------- FUNCIONES PRINCIPALES -------------------
-async function guardar() {
-  console.log("Guardar presionado");
-  const fechaElem = document.getElementById("fecha");
-  const clienteElem = document.getElementById("cliente");
-  const telefonoElem = document.getElementById("telefono");
-  const placaElem = document.getElementById("placa");
-  const modeloElem = document.getElementById("modelo");
-  const kmElem = document.getElementById("km");
-  const fallaElem = document.getElementById("falla");
-  const servicioElem = document.getElementById("servicio");
-  const obsElem = document.getElementById("obs");
-
-  if(!clienteElem.value || !placaElem.value){
-    alert("Cliente y Placa son obligatorios");
-    return;
+    verInicio();
   }
 
-  let fechaInput = fechaElem.value || obtenerFechaHoy();
-
-  let orden = {
-    fecha: fechaInput,
-    cliente: clienteElem.value,
-    telefono: telefonoElem.value,
-    placa: placaElem.value.toUpperCase(),
-    modelo: modeloElem.value,
-    km: kmElem.value,
-    falla: fallaElem.value,
-    servicio: servicioElem.value,
-    obs: obsElem.value
-  };
-
-  if(editando !== null){
-    ordenes[editando] = orden;
-    editando = null;
-  } else {
-    ordenes.push(orden);
+  function cargarRecientes(){
+    const recientes = document.getElementById("recientes");
+    recientes.innerHTML="";
+    ordenes.slice(-5).reverse().forEach(o=>{
+      recientes.innerHTML+=`
+        <div class="card">
+          <b>${o.placa}</b> - ${o.cliente}<br>
+          ${o.fecha}
+          <button onclick="verPerfil('${o.placa}')">Ver</button>
+        </div>`;
+    });
   }
 
-  localStorage.setItem("ordenes", JSON.stringify(ordenes));
+  function cargarHistorial(){
+    const listaHistorial = document.getElementById("listaHistorial");
+    listaHistorial.innerHTML="";
+    const filtroPlaca = document.getElementById("buscarPlaca").value.toUpperCase();
+    const filtroCliente = document.getElementById("buscarCliente").value.toLowerCase();
+    const filtroModelo = document.getElementById("buscarModelo").value.toLowerCase();
+    let placasFiltradas = [];
 
-  // Guardar en Supabase
-  try {
-    const { data, error } = await supabase.from('ordenes').insert([orden]);
-    if(error) alert("Error Supabase: " + error.message);
-    else console.log("Guardado en Supabase:", data);
-  } catch(e){
-    alert("Error de conexión con Supabase");
-    console.error(e);
+    ordenes.forEach(o=>{
+      if(o.placa.includes(filtroPlaca) &&
+         o.cliente.toLowerCase().includes(filtroCliente) &&
+         o.modelo.toLowerCase().includes(filtroModelo)){
+        if(!placasFiltradas.includes(o.placa)) placasFiltradas.push(o.placa);
+      }
+    });
+
+    placasFiltradas.forEach(p=>{
+      let o = ordenes.find(x=>x.placa===p);
+      listaHistorial.innerHTML+=`
+        <div class="card">
+          <b>${p}</b> - ${o.cliente} (${o.modelo})
+          <button onclick="verPerfil('${p}')">Abrir</button>
+        </div>`;
+    });
   }
 
-  ["fecha","cliente","telefono","placa","modelo","km","falla","servicio","obs"].forEach(id=>{
-    document.getElementById(id).value="";
+  window.verPerfil = function(placa){
+    ocultar();
+    const perfil = document.getElementById("perfil");
+    perfil.style.display="block";
+    perfil.innerHTML=`<h3>${placa}</h3>
+        <button id="btnVolverHistorial">⬅ Regresar al historial</button>
+        <button class="borrar" onclick="borrarVehiculo('${placa}')">Borrar todo historial</button>`;
+
+    ordenes.forEach((o,i)=>{
+      if(o.placa===placa){
+        perfil.innerHTML+=`
+          <div class="card">
+            <b>Fecha:</b> ${o.fecha}<br>
+            <b>Cliente:</b> ${o.cliente}<br>
+            <b>Teléfono:</b> ${o.telefono}<br>
+            <b>Modelo:</b> ${o.modelo}<br>
+            <b>Km:</b> ${o.km}<br>
+            <b>Falla:</b> ${o.falla}<br>
+            <b>Servicio:</b> ${o.servicio}<br>
+            <b>Observaciones:</b> ${o.obs}<br>
+            <button class="editar" onclick="editar(${i})">Editar</button>
+            <button class="borrar" onclick="borrar(${i})">Borrar</button>
+          </div>`;
+      }
+    });
+
+    document.getElementById("btnVolverHistorial").addEventListener("click", verHistorial);
+  }
+
+  function editar(i){
+    let o = ordenes[i];
+    editando = i;
+
+    ["fecha","cliente","telefono","placa","modelo","km","falla","servicio","obs"].forEach(id=>{
+      document.getElementById(id).value = o[id] || "";
+    });
+
+    document.getElementById("tituloOrden").innerText="Editar orden";
+    verNueva();
+  }
+
+  function borrar(i){
+    if(confirm("¿Borrar esta orden?")){
+      ordenes.splice(i,1);
+      localStorage.setItem("ordenes",JSON.stringify(ordenes));
+      verInicio();
+    }
+  }
+
+  function borrarVehiculo(placa){
+    if(confirm("¿Borrar todo el historial de este vehículo?")){
+      ordenes = ordenes.filter(o=>o.placa!==placa);
+      localStorage.setItem("ordenes",JSON.stringify(ordenes));
+      verInicio();
+    }
+  }
+
+  // ------------------- LISTENERS -------------------
+  document.getElementById("btnGuardar").addEventListener("click", guardar);
+  document.getElementById("btnInicio").addEventListener("click", verInicio);
+  document.getElementById("btnNueva").addEventListener("click", verNueva);
+  document.getElementById("btnHistorial").addEventListener("click", verHistorial);
+  document.getElementById("btnVolverInicio").addEventListener("click", verInicio);
+  ["buscarPlaca","buscarCliente","buscarModelo"].forEach(id=>{
+      document.getElementById(id).addEventListener("input", cargarHistorial);
   });
 
   verInicio();
-}
 
-function cargarRecientes(){
-  const recientes = document.getElementById("recientes");
-  recientes.innerHTML="";
-  ordenes.slice(-5).reverse().forEach(o=>{
-    recientes.innerHTML+=`
-      <div class="card">
-        <b>${o.placa}</b> - ${o.cliente}<br>
-        ${o.fecha}
-        <button onclick="verPerfil('${o.placa}')">Ver</button>
-      </div>`;
-  });
-}
-
-function cargarHistorial(){
-  const listaHistorial = document.getElementById("listaHistorial");
-  listaHistorial.innerHTML="";
-  const filtroPlaca = document.getElementById("buscarPlaca").value.toUpperCase();
-  const filtroCliente = document.getElementById("buscarCliente").value.toLowerCase();
-  const filtroModelo = document.getElementById("buscarModelo").value.toLowerCase();
-  let placasFiltradas = [];
-
-  ordenes.forEach(o=>{
-    if(o.placa.includes(filtroPlaca) &&
-       o.cliente.toLowerCase().includes(filtroCliente) &&
-       o.modelo.toLowerCase().includes(filtroModelo)){
-      if(!placasFiltradas.includes(o.placa)) placasFiltradas.push(o.placa);
-    }
-  });
-
-  placasFiltradas.forEach(p=>{
-    let o = ordenes.find(x=>x.placa===p);
-    listaHistorial.innerHTML+=`
-      <div class="card">
-        <b>${p}</b> - ${o.cliente} (${o.modelo})
-        <button onclick="verPerfil('${p}')">Abrir</button>
-      </div>`;
-  });
-}
-
-function verPerfil(placa){
-  ocultar();
-  const perfil = document.getElementById("perfil");
-  perfil.style.display="block";
-  perfil.innerHTML=`<h3>${placa}</h3>
-      <button id="btnVolverHistorial">⬅ Regresar al historial</button>
-      <button class="borrar" onclick="borrarVehiculo('${placa}')">Borrar todo historial</button>`;
-
-  ordenes.forEach((o,i)=>{
-    if(o.placa===placa){
-      perfil.innerHTML+=`
-        <div class="card">
-          <b>Fecha:</b> ${o.fecha}<br>
-          <b>Cliente:</b> ${o.cliente}<br>
-          <b>Teléfono:</b> ${o.telefono}<br>
-          <b>Modelo:</b> ${o.modelo}<br>
-          <b>Km:</b> ${o.km}<br>
-          <b>Falla:</b> ${o.falla}<br>
-          <b>Servicio:</b> ${o.servicio}<br>
-          <b>Observaciones:</b> ${o.obs}<br>
-          <button class="editar" onclick="editar(${i})">Editar</button>
-          <button class="borrar" onclick="borrar(${i})">Borrar</button>
-        </div>`;
-    }
-  });
-
-  // listener seguro para volver
-  document.getElementById("btnVolverHistorial").addEventListener("click", verHistorial);
-}
-
-function editar(i){
-  let o = ordenes[i];
-  editando = i;
-
-  ["fecha","cliente","telefono","placa","modelo","km","falla","servicio","obs"].forEach(id=>{
-    document.getElementById(id).value = o[id] || "";
-  });
-
-  document.getElementById("tituloOrden").innerText="Editar orden";
-  verNueva();
-}
-
-function borrar(i){
-  if(confirm("¿Borrar esta orden?")){
-    ordenes.splice(i,1);
-    localStorage.setItem("ordenes",JSON.stringify(ordenes));
-    verInicio();
-  }
-}
-
-function borrarVehiculo(placa){
-  if(confirm("¿Borrar todo el historial de este vehículo?")){
-    ordenes = ordenes.filter(o=>o.placa!==placa);
-    localStorage.setItem("ordenes",JSON.stringify(ordenes));
-    verInicio();
-  }
-}
-
-// ------------------- LISTENERS -------------------
-document.getElementById("btnGuardar").addEventListener("click", guardar);
-document.getElementById("btnInicio").addEventListener("click", verInicio);
-document.getElementById("btnNueva").addEventListener("click", verNueva);
-document.getElementById("btnHistorial").addEventListener("click", verHistorial);
-document.getElementById("btnVolverInicio")?.addEventListener("click", verInicio);
-["buscarPlaca","buscarCliente","buscarModelo"].forEach(id=>{
-  document.getElementById(id).addEventListener("input", cargarHistorial);
 });
-
-verInicio();
 </script>
 
 </body>
 </html>
+
+
 
 
 
