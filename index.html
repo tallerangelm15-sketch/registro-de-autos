@@ -107,9 +107,14 @@ input,textarea{
 </div>
 
 <script>
+// ================== CONFIGURACIÓN GOOGLE SHEETS ==================
+const URL = "https://script.google.com/macros/s/AKfycbxtLY2Qd8tKzepqHwuB30lXYo42zaTpsqgIZhINE9NYbVTED4b394le-bECCytDl5wv_w/exec";
+
+// ================== VARIABLES ==================
 let ordenes = JSON.parse(localStorage.getItem("ordenes") || "[]");
 let editando = null;
 
+// ================== FUNCIONES DE PANTALLA ==================
 function ocultar(){
   ["inicio","nueva","historial","perfil"].forEach(id=>{
     document.getElementById(id).style.display="none";
@@ -146,7 +151,7 @@ function verHistorial(){
   cargarHistorial();
 }
 
-// Fecha hoy en DD/MM/AAAA
+// ================== FECHA ==================
 function obtenerFechaHoy(){
   let f = new Date();
   let d = String(f.getDate()).padStart(2,"0");
@@ -155,6 +160,7 @@ function obtenerFechaHoy(){
   return `${d}/${m}/${y}`;
 }
 
+// ================== GUARDAR ==================
 function guardar(){
   let fechaInput = fecha.value || obtenerFechaHoy();
 
@@ -170,34 +176,35 @@ function guardar(){
     obs: obs.value
   };
 
-  if(editando !== null){
-    ordenes[editando] = orden;
-    editando = null;
-    localStorage.setItem("ordenes", JSON.stringify(ordenes));
-    verInicio();
-  } else {
-    let existePlaca = ordenes.some(o => o.placa === orden.placa);
-    ordenes.push(orden);
-    localStorage.setItem("ordenes", JSON.stringify(ordenes));
+  // ================== ENVIAR A GOOGLE SHEETS ==================
+  fetch(URL, {
+    method: "POST",
+    body: JSON.stringify(orden)
+  })
+  .then(response => response.json())
+  .then(data => {
+    alert("Auto guardado ✅");
 
-    if(existePlaca){
-      verPerfil(orden.placa);
-    } else {
-      verInicio();
-    }
-  }
+    // Limpiar formulario
+    fecha.value = "";
+    cliente.value = "";
+    telefono.value = "";
+    placa.value = "";
+    modelo.value = "";
+    km.value = "";
+    falla.value = "";
+    servicio.value = "";
+    obs.value = "";
 
-  fecha.value = "";
-  cliente.value = "";
-  telefono.value = "";
-  placa.value = "";
-  modelo.value = "";
-  km.value = "";
-  falla.value = "";
-  servicio.value = "";
-  obs.value = "";
+    verInicio(); // Volver al inicio
+  })
+  .catch(err => {
+    console.error(err);
+    alert("Error al guardar ❌");
+  });
 }
 
+// ================== RECENTES ==================
 function cargarRecientes(){
   recientes.innerHTML="";
   ordenes.slice(-5).reverse().forEach(o=>{
@@ -210,6 +217,7 @@ function cargarRecientes(){
   });
 }
 
+// ================== HISTORIAL ==================
 function cargarHistorial(){
   listaHistorial.innerHTML="";
 
@@ -238,6 +246,7 @@ function cargarHistorial(){
   });
 }
 
+// ================== PERFIL ==================
 function verPerfil(placa){
   ocultar();
   perfil.style.display="block";
@@ -264,6 +273,7 @@ function verPerfil(placa){
   });
 }
 
+// ================== EDITAR ==================
 function editar(i){
   let o=ordenes[i];
   editando=i;
@@ -280,6 +290,7 @@ function editar(i){
   verNueva();
 }
 
+// ================== BORRAR ==================
 function borrar(i){
   if(confirm("¿Borrar esta orden?")){
     ordenes.splice(i,1);
@@ -296,18 +307,9 @@ function borrarVehiculo(placa){
   }
 }
 
+// ================== INICIO ==================
 verInicio();
 </script>
 
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
